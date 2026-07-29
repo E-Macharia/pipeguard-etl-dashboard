@@ -10,6 +10,19 @@ from src.config.settings import DATABASE_URL, PROCESSED_DATA_PATH
 
 engine = create_engine(DATABASE_URL)
 
+# Configure SQLite WAL mode for concurrency
+from sqlalchemy import event
+@event.listens_for(engine, "connect")
+def set_sqlite_pragma(dbapi_connection, connection_record):
+    if DATABASE_URL.startswith("sqlite"):
+        try:
+            cursor = dbapi_connection.cursor()
+            cursor.execute("PRAGMA journal_mode=WAL")
+            cursor.execute("PRAGMA synchronous=NORMAL")
+            cursor.close()
+        except:
+            pass
+
 
 def load_to_database(if_exists="append"):
     """

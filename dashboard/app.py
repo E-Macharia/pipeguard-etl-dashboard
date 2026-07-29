@@ -25,32 +25,28 @@ from src.config.settings import DATABASE_URL
 
 engine = create_engine(DATABASE_URL)
 
+# Configure SQLite WAL mode for concurrency
+from sqlalchemy import event
+@event.listens_for(engine, "connect")
+def set_sqlite_pragma(dbapi_connection, connection_record):
+    if DATABASE_URL.startswith("sqlite"):
+        try:
+            cursor = dbapi_connection.cursor()
+            cursor.execute("PRAGMA journal_mode=WAL")
+            cursor.execute("PRAGMA synchronous=NORMAL")
+            cursor.close()
+        except:
+            pass
+
 # Automatically initialize database and run ETL if table doesn't exist
 try:
     from sqlalchemy import inspect
     inspector = inspect(engine)
     if not inspector.has_table("pipeline_sensor_data"):
         from src.main import run_pipeline
-        try:
-            run_pipeline()
-        except Exception as e:
-            # Self-healing: if the initial run fails (e.g. tokenization error on old container files), wipe and restart
-            import os
-            import shutil
-            st.warning(f"Initial run failed ({e}). Wiping data and retrying...")
-            if os.path.exists("pipeline.db"):
-                try:
-                    engine.dispose()
-                    os.remove("pipeline.db")
-                except: pass
-            if os.path.exists("data"):
-                try: shutil.rmtree("data")
-                except: pass
-            # Recreate engine for the new database file
-            engine = create_engine(DATABASE_URL)
-            run_pipeline()
+        run_pipeline()
 except Exception as e:
-    st.warning(f"Database auto-initialization skipped/failed: {e}")
+    st.warning(f"Database auto-initialization failed: {e}")
 
 # Incrementally ingest new live data every 5 seconds to simulate real-time updates
 import time
@@ -64,27 +60,8 @@ if current_time - st.session_state.last_ingress_time >= 5:
         import src.main
         importlib.reload(src.main)
         from src.main import run_incremental_pipeline
-        try:
-            # Ingest 3 new records every 5 seconds
-            run_incremental_pipeline(num_records=3)
-        except Exception as e:
-            # Self-healing: if incremental run fails due to corrupted container files, wipe and rebuild
-            import os
-            import shutil
-            st.warning(f"Incremental ingestion failed ({e}). Wiping data and rebuilding...")
-            if os.path.exists("pipeline.db"):
-                try:
-                    engine.dispose()
-                    os.remove("pipeline.db")
-                except: pass
-            if os.path.exists("data"):
-                try: shutil.rmtree("data")
-                except: pass
-            # Recreate engine for the new database file
-            engine = create_engine(DATABASE_URL)
-            from src.main import run_pipeline
-            run_pipeline()
-            
+        # Ingest 3 new records every 5 seconds
+        run_incremental_pipeline(num_records=3)
         st.session_state.last_ingress_time = current_time
         # Clear cache so streamlit fetches the newly ingested data
         st.cache_data.clear()
@@ -99,19 +76,7 @@ def load_data():
 try:
     df = load_data()
 except Exception as e:
-    # Final fallback: if loading data still fails, force a full database rebuild
-    import os
-    import shutil
-    if os.path.exists("pipeline.db"):
-        try:
-            engine.dispose()
-            os.remove("pipeline.db")
-        except: pass
-    if os.path.exists("data"):
-        try: shutil.rmtree("data")
-        except: pass
-    # Recreate engine for the new database file
-    engine = create_engine(DATABASE_URL)
+    # Rebuild database safely using replace if loading fails
     from src.main import run_pipeline
     run_pipeline()
     df = load_data()
