@@ -124,28 +124,33 @@ def validate_data():
     # Final Result
     # ==========================================
 
-    if (
-        duplicate_count == 0
-        and missing_values.sum() == 0
-        and len(invalid_flow) == 0
-        and len(invalid_loss) == 0
-        and len(invalid_pressure) == 0
-        and len(invalid_temperature) == 0
-        and len(negative_loss) == 0
-        and len(incorrect_loss) == 0
-    ):
+    failures = []
+    if duplicate_count > 0:
+        failures.append(f"{duplicate_count} duplicate records")
+    if missing_values.sum() > 0:
+        failures.append(f"{missing_values.sum()} missing values")
+    if len(invalid_flow) > 0:
+        failures.append(f"{len(invalid_flow)} invalid flow records")
+    if len(invalid_loss) > 0:
+        failures.append(f"{len(invalid_loss)} flow out > flow in records")
+    if len(invalid_pressure) > 0:
+        failures.append(f"{len(invalid_pressure)} invalid pressure records")
+    if len(invalid_temperature) > 0:
+        failures.append(f"{len(invalid_temperature)} invalid temperature records")
+    if len(negative_loss) > 0:
+        failures.append(f"{len(negative_loss)} negative loss records")
+    if len(incorrect_loss) > 0:
+        failures.append(f"{len(incorrect_loss)} incorrect loss calculations")
 
+    if not failures:
         print("\nAll data quality checks PASSED.")
         print("=" * 60)
-
         return True
-
     else:
-
-        print("\nData quality checks FAILED.")
+        failure_msg = ", ".join(failures)
+        print(f"\nData quality checks FAILED: {failure_msg}")
         print("=" * 60)
-
-        raise ValueError("Data quality validation failed.")
+        raise ValueError(f"Data quality validation failed: {failure_msg}")
 
 
 # ==========================================

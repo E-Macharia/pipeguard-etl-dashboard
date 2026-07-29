@@ -149,6 +149,15 @@ def clean_data():
                 index=False
             )
 
+        # Self-healing: clean up any potential duplicate rows in the final processed file
+        try:
+            final_processed_df = pd.read_csv(PROCESSED_DATA_PATH)
+            if final_processed_df.duplicated().sum() > 0:
+                final_processed_df = final_processed_df.drop_duplicates()
+                final_processed_df.to_csv(PROCESSED_DATA_PATH, index=False)
+        except Exception:
+            pass
+
         print(f"Appended {len(new_records)} new records.")
 
     else:
