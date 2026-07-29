@@ -31,7 +31,20 @@ try:
     inspector = inspect(engine)
     if not inspector.has_table("pipeline_sensor_data"):
         from src.main import run_pipeline
-        run_pipeline()
+        try:
+            run_pipeline()
+        except Exception as e:
+            # Self-healing: if the initial run fails (e.g. tokenization error on old container files), wipe and restart
+            import os
+            import shutil
+            st.warning(f"Initial run failed ({e}). Wiping data and retrying...")
+            if os.path.exists("pipeline.db"):
+                try: os.remove("pipeline.db")
+                except: pass
+            if os.path.exists("data"):
+                try: shutil.rmtree("data")
+                except: pass
+            run_pipeline()
 except Exception as e:
     st.warning(f"Database auto-initialization skipped/failed: {e}")
 
@@ -47,8 +60,23 @@ if current_time - st.session_state.last_ingress_time >= 5:
         import src.main
         importlib.reload(src.main)
         from src.main import run_incremental_pipeline
-        # Ingest 3 new records every 5 seconds
-        run_incremental_pipeline(num_records=3)
+        try:
+            # Ingest 3 new records every 5 seconds
+            run_incremental_pipeline(num_records=3)
+        except Exception as e:
+            # Self-healing: if incremental run fails due to corrupted container files, wipe and rebuild
+            import os
+            import shutil
+            st.warning(f"Incremental ingestion failed ({e}). Wiping data and rebuilding...")
+            if os.path.exists("pipeline.db"):
+                try: os.remove("pipeline.db")
+                except: pass
+            if os.path.exists("data"):
+                try: shutil.rmtree("data")
+                except: pass
+            from src.main import run_pipeline
+            run_pipeline()
+            
         st.session_state.last_ingress_time = current_time
         # Clear cache so streamlit fetches the newly ingested data
         st.cache_data.clear()
@@ -60,7 +88,22 @@ def load_data():
     query = "SELECT * FROM pipeline_sensor_data"
     return pd.read_sql(query, engine)
 
-df = load_data()
+try:
+    df = load_data()
+except Exception as e:
+    # Final fallback: if loading data still fails, force a full database rebuild
+    import os
+    import shutil
+    if os.path.exists("pipeline.db"):
+        try: os.remove("pipeline.db")
+        except: pass
+    if os.path.exists("data"):
+        try: shutil.rmtree("data")
+        except: pass
+    from src.main import run_pipeline
+    run_pipeline()
+    df = load_data()
+
 df["timestamp"] = pd.to_datetime(df["timestamp"])
 
 # ==========================================================
