@@ -15,28 +15,8 @@ sys.path.append(str(PROJECT_ROOT))
 
 import streamlit as st
 import pandas as pd
-from sqlalchemy import create_engine
 
-from src.config.settings import DATABASE_URL
-
-# ==========================================================
-# Database
-# ==========================================================
-
-engine = create_engine(DATABASE_URL)
-
-# Configure SQLite WAL mode for concurrency
-from sqlalchemy import event
-@event.listens_for(engine, "connect")
-def set_sqlite_pragma(dbapi_connection, connection_record):
-    if DATABASE_URL.startswith("sqlite"):
-        try:
-            cursor = dbapi_connection.cursor()
-            cursor.execute("PRAGMA journal_mode=WAL")
-            cursor.execute("PRAGMA synchronous=NORMAL")
-            cursor.close()
-        except:
-            pass
+from src.loading.database import engine
 
 # Automatically initialize database and run ETL if table doesn't exist
 try:
