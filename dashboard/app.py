@@ -35,6 +35,23 @@ try:
 except Exception as e:
     st.warning(f"Database auto-initialization skipped/failed: {e}")
 
+# Incrementally ingest new live data every 5 seconds to simulate real-time updates
+import time
+if "last_ingress_time" not in st.session_state:
+    st.session_state.last_ingress_time = 0
+
+current_time = time.time()
+if current_time - st.session_state.last_ingress_time >= 5:
+    try:
+        from src.main import run_incremental_pipeline
+        # Ingest 3 new records every 5 seconds
+        run_incremental_pipeline(num_records=3)
+        st.session_state.last_ingress_time = current_time
+        # Clear cache so streamlit fetches the newly ingested data
+        st.cache_data.clear()
+    except Exception as e:
+        st.warning(f"Real-time incremental ingestion failed: {e}")
+
 @st.cache_data(ttl=5)
 def load_data():
     query = "SELECT * FROM pipeline_sensor_data"

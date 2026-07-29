@@ -1,10 +1,29 @@
 import time
 
-from src.data_generation.generate_pipeline_data import generate_dataset
+from src.data_generation.generate_pipeline_data import generate_dataset, append_live_data
 from src.ingestion.extract import extract_data
 from src.transformation.clean import clean_data
 from src.validation.quality_checks import validate_data
 from src.loading.database import load_to_database
+
+
+def run_incremental_pipeline(num_records=5):
+    """
+    Execute the ETL pipeline incrementally by appending new live records.
+    """
+    start_time = time.time()
+    try:
+        print(f"\nAppending {num_records} new live sensor readings...")
+        append_live_data(num_records=num_records)
+        extract_data()
+        clean_data()
+        validate_data()
+        load_to_database()
+        print(f"Incremental ETL completed in {round(time.time() - start_time, 2)}s.")
+    except Exception as e:
+        print(f"Incremental ETL failed: {e}")
+        raise
+
 
 
 def run_pipeline():
