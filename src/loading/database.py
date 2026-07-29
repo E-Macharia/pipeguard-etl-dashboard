@@ -11,10 +11,9 @@ from src.config.settings import DATABASE_URL, PROCESSED_DATA_PATH
 engine = create_engine(DATABASE_URL)
 
 
-def load_to_database():
+def load_to_database(if_exists="append"):
     """
-    Load only new cleaned pipeline sensor data
-    into PostgreSQL.
+    Load cleaned pipeline sensor data into the database.
     """
 
     print("=" * 60)
@@ -37,30 +36,34 @@ def load_to_database():
         # Check if table exists
         # ==========================================
 
-        try:
+        if if_exists == "replace":
+            existing_df = pd.DataFrame(columns=["timestamp", "sensor_id"])
+            print("Wiping and replacing database table...")
+        else:
+            try:
 
-            existing_df = pd.read_sql(
-                "SELECT timestamp, sensor_id FROM pipeline_sensor_data",
-                engine
-            )
+                existing_df = pd.read_sql(
+                    "SELECT timestamp, sensor_id FROM pipeline_sensor_data",
+                    engine
+                )
 
-            existing_df["timestamp"] = pd.to_datetime(
-                existing_df["timestamp"]
-            )
+                existing_df["timestamp"] = pd.to_datetime(
+                    existing_df["timestamp"]
+                )
 
-            print(
-                f"Existing database records: {len(existing_df)}"
-            )
+                print(
+                    f"Existing database records: {len(existing_df)}"
+                )
 
-        except Exception:
+            except Exception:
 
-            existing_df = pd.DataFrame(
-                columns=["timestamp", "sensor_id"]
-            )
+                existing_df = pd.DataFrame(
+                    columns=["timestamp", "sensor_id"]
+                )
 
-            print(
-                "Database table not found. A new table will be created."
-            )
+                print(
+                    "Database table not found. A new table will be created."
+                )
 
         # ==========================================
         # Keep only records not already in database
@@ -87,7 +90,7 @@ def load_to_database():
         print(f"New records to load: {len(new_df)}")
 
         # ==========================================
-        # Load only new records
+        # Load records
         # ==========================================
 
         if len(new_df) > 0:
@@ -95,11 +98,11 @@ def load_to_database():
             new_df.to_sql(
                 name="pipeline_sensor_data",
                 con=engine,
-                if_exists="append",
+                if_exists=if_exists,
                 index=False
             )
 
-            print("\nNew records successfully loaded!")
+            print(f"\nRecords successfully loaded with action '{if_exists}'!")
 
         else:
 

@@ -71,7 +71,7 @@ def run_pipeline():
         # ==========================================
 
         print("\n[5/5] Loading data into PostgreSQL...")
-        load_to_database()
+        load_to_database(if_exists="replace")
 
         execution_time = round(time.time() - start_time, 2)
 

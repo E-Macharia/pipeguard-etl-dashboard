@@ -145,6 +145,8 @@ def generate_dataset():
 
 def append_live_data(num_records=LIVE_RECORDS):
 
+    os.makedirs("data/raw", exist_ok=True)
+
     if os.path.exists(OUTPUT_FILE):
 
         existing_df = pd.read_csv(OUTPUT_FILE)
