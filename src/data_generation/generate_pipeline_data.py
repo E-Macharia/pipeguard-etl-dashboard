@@ -122,7 +122,10 @@ def generate_dataset():
 
     df = pd.DataFrame(records)
 
-    df.to_csv(OUTPUT_FILE, index=False)
+    # Atomic write to prevent corruption from concurrent requests
+    tmp_file = OUTPUT_FILE + ".tmp"
+    df.to_csv(tmp_file, index=False)
+    os.replace(tmp_file, OUTPUT_FILE)
 
     print("=" * 60)
     print("PIPEGUARD AI INITIAL DATASET GENERATED")
@@ -165,21 +168,15 @@ def append_live_data(num_records=LIVE_RECORDS):
 
     new_df = pd.DataFrame(records)
 
-    if os.path.exists(OUTPUT_FILE):
-
-        new_df.to_csv(
-            OUTPUT_FILE,
-            mode="a",
-            header=False,
-            index=False
-        )
-
+    # Atomic write for appended data by rewriting the combined dataset
+    if len(existing_df) > 0:
+        combined_df = pd.concat([existing_df, new_df], ignore_index=True)
     else:
+        combined_df = new_df
 
-        new_df.to_csv(
-            OUTPUT_FILE,
-            index=False
-        )
+    tmp_file = OUTPUT_FILE + ".tmp"
+    combined_df.to_csv(tmp_file, index=False)
+    os.replace(tmp_file, OUTPUT_FILE)
 
     print("=" * 60)
     print("NEW SENSOR DATA RECEIVED")

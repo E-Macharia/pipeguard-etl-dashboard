@@ -134,29 +134,18 @@ def clean_data():
     if len(new_records) > 0:
 
         if os.path.exists(PROCESSED_DATA_PATH):
-
-            new_records.to_csv(
-                PROCESSED_DATA_PATH,
-                mode="a",
-                header=False,
-                index=False
-            )
-
+            processed_df = pd.read_csv(PROCESSED_DATA_PATH)
+            combined_df = pd.concat([processed_df, new_records], ignore_index=True)
         else:
+            combined_df = new_records
 
-            new_records.to_csv(
-                PROCESSED_DATA_PATH,
-                index=False
-            )
+        # Self-healing: drop any duplicate records
+        combined_df = combined_df.drop_duplicates()
 
-        # Self-healing: clean up any potential duplicate rows in the final processed file
-        try:
-            final_processed_df = pd.read_csv(PROCESSED_DATA_PATH)
-            if final_processed_df.duplicated().sum() > 0:
-                final_processed_df = final_processed_df.drop_duplicates()
-                final_processed_df.to_csv(PROCESSED_DATA_PATH, index=False)
-        except Exception:
-            pass
+        # Atomic write to prevent file corruption
+        tmp_file = PROCESSED_DATA_PATH + ".tmp"
+        combined_df.to_csv(tmp_file, index=False)
+        os.replace(tmp_file, PROCESSED_DATA_PATH)
 
         print(f"Appended {len(new_records)} new records.")
 

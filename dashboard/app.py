@@ -39,11 +39,15 @@ try:
             import shutil
             st.warning(f"Initial run failed ({e}). Wiping data and retrying...")
             if os.path.exists("pipeline.db"):
-                try: os.remove("pipeline.db")
+                try:
+                    engine.dispose()
+                    os.remove("pipeline.db")
                 except: pass
             if os.path.exists("data"):
                 try: shutil.rmtree("data")
                 except: pass
+            # Recreate engine for the new database file
+            engine = create_engine(DATABASE_URL)
             run_pipeline()
 except Exception as e:
     st.warning(f"Database auto-initialization skipped/failed: {e}")
@@ -69,11 +73,15 @@ if current_time - st.session_state.last_ingress_time >= 5:
             import shutil
             st.warning(f"Incremental ingestion failed ({e}). Wiping data and rebuilding...")
             if os.path.exists("pipeline.db"):
-                try: os.remove("pipeline.db")
+                try:
+                    engine.dispose()
+                    os.remove("pipeline.db")
                 except: pass
             if os.path.exists("data"):
                 try: shutil.rmtree("data")
                 except: pass
+            # Recreate engine for the new database file
+            engine = create_engine(DATABASE_URL)
             from src.main import run_pipeline
             run_pipeline()
             
@@ -95,11 +103,15 @@ except Exception as e:
     import os
     import shutil
     if os.path.exists("pipeline.db"):
-        try: os.remove("pipeline.db")
+        try:
+            engine.dispose()
+            os.remove("pipeline.db")
         except: pass
     if os.path.exists("data"):
         try: shutil.rmtree("data")
         except: pass
+    # Recreate engine for the new database file
+    engine = create_engine(DATABASE_URL)
     from src.main import run_pipeline
     run_pipeline()
     df = load_data()
