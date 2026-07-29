@@ -1,0 +1,11 @@
+pandas
+numpy
+pytest
+pandera
+streamlit
+plotly
+sqlalchemy
+psycopg2-binary
+python-dotenv
+faker
+streamlit-autorefresh
