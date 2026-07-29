@@ -43,6 +43,9 @@ if "last_ingress_time" not in st.session_state:
 current_time = time.time()
 if current_time - st.session_state.last_ingress_time >= 5:
     try:
+        import importlib
+        import src.main
+        importlib.reload(src.main)
         from src.main import run_incremental_pipeline
         # Ingest 3 new records every 5 seconds
         run_incremental_pipeline(num_records=3)
