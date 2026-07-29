@@ -5,10 +5,7 @@ import os
 load_dotenv()
 
 
-DATABASE_URL = os.getenv("DATABASE_URL")
-
-if not DATABASE_URL:
-    raise ValueError("DATABASE_URL environment variable is missing.")
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///pipeline.db")
 
 RAW_DATA_PATH = os.getenv(
     "RAW_DATA_PATH",

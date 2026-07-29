@@ -25,6 +25,16 @@ from src.config.settings import DATABASE_URL
 
 engine = create_engine(DATABASE_URL)
 
+# Automatically initialize database and run ETL if table doesn't exist
+try:
+    from sqlalchemy import inspect
+    inspector = inspect(engine)
+    if not inspector.has_table("pipeline_sensor_data"):
+        from src.main import run_pipeline
+        run_pipeline()
+except Exception as e:
+    st.warning(f"Database auto-initialization skipped/failed: {e}")
+
 @st.cache_data(ttl=5)
 def load_data():
     query = "SELECT * FROM pipeline_sensor_data"
